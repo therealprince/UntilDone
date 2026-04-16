@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Light theme: light splash background -->
+    <style name="Theme.UntilDone" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/splash_light</item>
+        <item name="android:statusBarColor">@color/splash_light</item>
+        <item name="android:navigationBarColor">@color/splash_light</item>
+    </style>
+</resources>
