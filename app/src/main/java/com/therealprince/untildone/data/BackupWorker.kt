@@ -16,10 +16,11 @@ class BackupReceiver : BroadcastReceiver() {
         val backupManager = BackupManager(context)
 
         val userId = sessionManager.getUserId()
+        val userName = sessionManager.getUserName()
         if (userId != -1L) {
             CoroutineScope(Dispatchers.IO).launch {
                 try {
-                    backupManager.createBackup(db, userId)
+                    backupManager.createAutoBackup(db, userId, userName)
                 } catch (e: Exception) {
                     e.printStackTrace()
                 }

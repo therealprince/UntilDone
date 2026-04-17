@@ -183,14 +183,14 @@ fun DashboardScreen(
                     modifier = Modifier
                         .size(48.dp)
                         .clip(RoundedCornerShape(16.dp))
-                        .background(Emerald600)
+                        .background(colors.cardBackground)
                         .clickable { onNavigate("timer", null) },
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Filled.PlayArrow,
                         contentDescription = "Start Focus",
-                        tint = androidx.compose.ui.graphics.Color.White,
+                        tint = colors.textPrimary,
                         modifier = Modifier.size(24.dp)
                     )
                 }

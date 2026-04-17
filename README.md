@@ -22,6 +22,39 @@
 
 ---
 
+<div align="center">
+<table>
+  <tr>
+    <td align="center"><b>Log In</b></td>
+    <td align="center"><b>Sign Up</b></td>
+    <td align="center"><b>Dashboard</b></td>
+  </tr>
+  <tr>
+    <td><img src="Screenshots/Login_Screen.png" width="240"/></td>
+    <td><img src="Screenshots/Signup_Screen.png" width="240"/></td>
+    <td><img src="Screenshots/Home_Screen.png" width="240"/></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Mission Status</b></td>
+    <td align="center"><b>Missions Board</b></td>
+    <td align="center"><b>Insights</b></td>
+  </tr>
+  <tr>
+    <td><img src="Screenshots/Mission_Status_Screen.png" width="240"/></td>
+    <td><img src="Screenshots/Mission_Screen.png" width="240"/></td>
+    <td><img src="Screenshots/Insights_Screen.png" width="240"/></td>
+  </tr>
+  <tr>
+    <td align="center" colspan="3"><b>Settings</b></td>
+  </tr>
+  <tr>
+    <td align="center" colspan="3"><img src="Screenshots/Setting_Screen.png" width="240"/></td>
+  </tr>
+</table>
+</div>
+
+---
+
 ## The honest pitch
 
 Most productivity apps want you to *organize* your life. Color-code your goals. Build systems. Set up dashboards. You spend 45 minutes planning your week and feel weirdly productive without doing a single real thing.
@@ -40,7 +73,9 @@ Most productivity apps want you to *organize* your life. Color-code your goals. 
 
 **Insights** — A minimal analytics view. Your streak, execution points, weekly consistency. Just enough to know if you're showing up.
 
-**Your data, your phone** — Everything is stored locally in SQLite. Nothing leaves your device unless *you* create a backup. You can schedule automatic backups or do it manually. Restore anytime.
+**Backup & Restore** — Manual and automatic backups saved to `Internal Storage > UntilDone > {your name} > backup`. Restore anytime through the system file picker — works even if you reinstall the app.
+
+**Your data, your phone** — Everything is stored locally in SQLite. Nothing leaves your device unless *you* create a backup.
 
 ---
 
@@ -51,6 +86,7 @@ UntilDone follows your system's dark/light mode automatically. The UI is clean, 
 - Dark mode that's actually dark
 - Adaptive icon that looks right on any launcher
 - Smooth screen transitions
+- Responsive layout across all screen sizes
 - Bottom nav that makes sense
 
 ---
@@ -67,15 +103,13 @@ This is the trade-off. We think it's worth it.
 
 ## Get started
 
-**Requirements:** Android 7.0+ (API 24)
-
-1. Clone the repo
-2. Open in Android Studio
-3. Hit run
+**Requirements:** Android 11+ (API 30)
 
 ```bash
-git clone https://github.com/yourusername/UntilDone.git
+git clone https://github.com/therealprince/UntilDone.git
 ```
+
+Open in Android Studio. Sync Gradle. Hit run.
 
 No API keys. No Firebase setup. No `.env` file. Just open and run.
 
@@ -107,7 +141,7 @@ MIT — do whatever you want with it.
 
 <br/>
 
-*Great Plan Deserve Relentless Execution.*
+*Great Plans Deserve Relentless Execution.*
 
 **◎**
 

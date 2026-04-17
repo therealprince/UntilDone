@@ -1,6 +1,10 @@
 package com.therealprince.untildone
 
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
+import android.os.Environment
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -155,6 +159,55 @@ fun UntilDoneApp(
                     }
                 }
             }
+        }
+    }
+
+    // SAF file picker for restore — opens system file explorer
+    val restoreFileLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            scope.launch {
+                try {
+                    val json = withContext(Dispatchers.IO) {
+                        context.contentResolver.openInputStream(uri)?.bufferedReader()?.readText()
+                    }
+                    if (json != null) {
+                        val success = backupManager.restoreFromJson(db, json, sessionManager)
+                        if (success) {
+                            backupMessage = "Restored successfully"
+                            currentUserId = sessionManager.getUserId()
+                            currentUserName = sessionManager.getUserName()
+                            currentUserEmail = sessionManager.getUserEmail()
+                        } else {
+                            backupMessage = "Restore failed: invalid backup file"
+                        }
+                    } else {
+                        backupMessage = "Restore failed: could not read file"
+                    }
+                } catch (e: Exception) {
+                    backupMessage = "Restore failed: ${e.message}"
+                }
+            }
+        }
+    }
+
+    // Storage permission launcher for backup creation
+    val storagePermissionLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) {
+        // After returning from permission settings, retry backup
+        if (Environment.isExternalStorageManager()) {
+            scope.launch {
+                try {
+                    val file = backupManager.createBackup(db, currentUserId, currentUserName)
+                    backupMessage = "Backup created: ${file.name}"
+                } catch (e: Exception) {
+                    backupMessage = "Backup failed: ${e.message}"
+                }
+            }
+        } else {
+            backupMessage = "Storage permission required for backup"
         }
     }
 
@@ -374,40 +427,29 @@ fun UntilDoneApp(
                                 }
                             },
                             onCreateBackup = {
-                                scope.launch {
-                                    try {
-                                        val file = backupManager.createBackup(
-                                            db, currentUserId
-                                        )
-                                        backupMessage = "Backup created: ${file.name}"
-                                    } catch (e: Exception) {
-                                        backupMessage = "Backup failed: ${e.message}"
+                                if (Environment.isExternalStorageManager()) {
+                                    scope.launch {
+                                        try {
+                                            val file = backupManager.createBackup(
+                                                db, currentUserId, currentUserName
+                                            )
+                                            backupMessage = "Backup created: ${file.name}"
+                                        } catch (e: Exception) {
+                                            backupMessage = "Backup failed: ${e.message}"
+                                        }
                                     }
+                                } else {
+                                    // Request MANAGE_EXTERNAL_STORAGE permission
+                                    val intent = Intent(
+                                        Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                                        Uri.parse("package:${context.packageName}")
+                                    )
+                                    storagePermissionLauncher.launch(intent)
                                 }
                             },
                             onRestoreBackup = {
-                                scope.launch {
-                                    try {
-                                        val latest = backupManager.getLatestBackup()
-                                        if (latest != null) {
-                                            val success = backupManager.restoreBackup(
-                                                db, latest, sessionManager
-                                            )
-                                            if (success) {
-                                                backupMessage = "Restored from ${latest.name}"
-                                                currentUserId = sessionManager.getUserId()
-                                                currentUserName = sessionManager.getUserName()
-                                                currentUserEmail = sessionManager.getUserEmail()
-                                            } else {
-                                                backupMessage = "Restore failed"
-                                            }
-                                        } else {
-                                            backupMessage = "No backup found"
-                                        }
-                                    } catch (e: Exception) {
-                                        backupMessage = "Restore failed: ${e.message}"
-                                    }
-                                }
+                                // Open system file explorer to pick a .json backup
+                                restoreFileLauncher.launch(arrayOf("application/json", "*/*"))
                             },
                             isPeriodicBackupEnabled = isPeriodicBackupEnabled,
                             onTogglePeriodicBackup = { enabled ->
@@ -430,15 +472,16 @@ fun UntilDoneApp(
                                     BackupReceiver.schedule(context, hours.toLong())
                                 }
                             },
-                            lastBackupInfo = remember {
-                                backupManager.getLatestBackup()?.let { file ->
+                            lastBackupInfo = remember(currentUserName) {
+                                backupManager.getLatestBackup(currentUserName)?.let { file ->
                                     val date = SimpleDateFormat(
                                         "MMM dd, yyyy HH:mm", Locale.US
                                     ).format(Date(file.lastModified()))
                                     "Last backup: $date"
                                 }
                             },
-                            backupMessage = backupMessage
+                            backupMessage = backupMessage,
+                            backupLocation = backupManager.getBackupLocationDisplay(currentUserName)
                         )
                     }
                 }

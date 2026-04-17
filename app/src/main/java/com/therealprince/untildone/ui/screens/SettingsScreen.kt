@@ -54,6 +54,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.therealprince.untildone.ui.theme.UntilDoneTheme
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @Composable
 fun SettingsScreen(
@@ -74,6 +78,7 @@ fun SettingsScreen(
     onSetBackupInterval: (Int) -> Unit,
     lastBackupInfo: String?,
     backupMessage: String?,
+    backupLocation: String?,
     modifier: Modifier = Modifier
 ) {
     val colors = UntilDoneTheme.colors
@@ -324,7 +329,7 @@ fun SettingsScreen(
 
             SettingsButton(
                 icon = Icons.Outlined.Restore,
-                text = "Restore from Latest Backup",
+                text = "Restore from Backup",
                 onClick = onRestoreBackup
             )
 
@@ -403,6 +408,16 @@ fun SettingsScreen(
                     )
                 }
             }
+
+            // Backup location info
+            if (backupLocation != null) {
+                Text(
+                    text = "📂 $backupLocation",
+                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 10.sp),
+                    color = colors.textTertiary,
+                    modifier = Modifier.padding(start = 4.dp, top = 4.dp)
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(20.dp))
@@ -467,7 +482,7 @@ fun SettingsScreen(
         Spacer(modifier = Modifier.height(32.dp))
 
         Text(
-            text = "UntilDone v1.0",
+            text = "UntilDone v1.1",
             style = MaterialTheme.typography.bodySmall,
             color = colors.textTertiary,
             modifier = Modifier.align(Alignment.CenterHorizontally)

@@ -4,6 +4,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -54,6 +55,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.therealprince.untildone.data.Journey
 import com.therealprince.untildone.ui.theme.UntilDoneTheme
+import androidx.compose.ui.platform.LocalConfiguration
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -72,6 +74,10 @@ fun JourneyDetailScreen(
     val colors = UntilDoneTheme.colors
     var logAmount by remember(journey.id) { mutableIntStateOf(journey.dailyTarget.coerceAtLeast(1)) }
     var showAbandonDialog by remember { mutableStateOf(false) }
+
+    // Responsive scaling — reference device height is 780dp
+    val screenHeight = LocalConfiguration.current.screenHeightDp
+    val scale = (screenHeight / 780f).coerceIn(0.85f, 1.35f)
 
     // Animate progress
     var targetProgress by remember { mutableFloatStateOf(0f) }
@@ -111,7 +117,7 @@ fun JourneyDetailScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(colors.background.copy(alpha = 0.8f))
-                .padding(horizontal = 20.dp, vertical = 12.dp),
+                .padding(horizontal = 20.dp, vertical = (12 * scale).dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -147,7 +153,7 @@ fun JourneyDetailScreen(
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp)
-                .padding(top = 10.dp, bottom = 24.dp)
+                .padding(top = (10 * scale).dp, bottom = (24 * scale).dp)
         ) {
             // Tag
             Box(
@@ -163,7 +169,7 @@ fun JourneyDetailScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height((10 * scale).dp))
 
             // Title
             Text(
@@ -172,7 +178,7 @@ fun JourneyDetailScreen(
                 color = colors.textPrimary
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height((16 * scale).dp))
 
             // =========================================================
             // HERO STATS CARD
@@ -233,7 +239,7 @@ fun JourneyDetailScreen(
                 }
 
                 // Content
-                Column(modifier = Modifier.padding(20.dp)) {
+                Column(modifier = Modifier.padding((20 * scale).dp)) {
                     // Top Status Row: Pace badge + Percentage
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -318,11 +324,11 @@ fun JourneyDetailScreen(
                     } else {
                         Text(
                             text = "$daysLeft",
-                            fontSize = 56.sp,
+                            fontSize = (56 * scale).sp,
                             fontWeight = FontWeight.Black,
                             letterSpacing = (-3).sp,
                             style = MaterialTheme.typography.displayLarge.copy(
-                                fontSize = 56.sp,
+                                fontSize = (56 * scale).sp,
                                 brush = Brush.verticalGradient(
                                     colors = listOf(
                                         Color.White,
@@ -336,7 +342,7 @@ fun JourneyDetailScreen(
                     // Subtitle row
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(top = 4.dp)
+                        modifier = Modifier.padding(top = (4 * scale).dp)
                     ) {
                         Text(
                             text = if (isComplete) "MISSION ACCOMPLISHED" else "DAYS TO GOAL",
@@ -367,7 +373,7 @@ fun JourneyDetailScreen(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(18.dp))
+                    Spacer(modifier = Modifier.height((18 * scale).dp))
 
                     // Premium Progress Track
                     Box(
@@ -415,7 +421,7 @@ fun JourneyDetailScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height((16 * scale).dp))
 
             // =========================================================
             // LOG PROGRESS / COMPLETION CARD
@@ -426,7 +432,7 @@ fun JourneyDetailScreen(
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(24.dp))
                         .background(colors.cardBackground)
-                        .padding(20.dp)
+                        .padding((20 * scale).dp)
                 ) {
                     Text(
                         text = "Log Progress",
@@ -440,7 +446,7 @@ fun JourneyDetailScreen(
                         color = colors.textTertiary
                     )
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height((16 * scale).dp))
 
                     // Stepper
                     Row(
@@ -448,13 +454,13 @@ fun JourneyDetailScreen(
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(12.dp))
                             .background(colors.background)
-                            .padding(6.dp),
+                            .padding((6 * scale).dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(40.dp)
+                                .size((40 * scale).dp)
                                 .clip(RoundedCornerShape(8.dp))
                                 .background(colors.stepperBackground)
                                 .clickable { logAmount = (logAmount - 1).coerceAtLeast(1) },
@@ -472,7 +478,7 @@ fun JourneyDetailScreen(
                             Text(
                                 text = "$logAmount",
                                 style = MaterialTheme.typography.headlineLarge.copy(
-                                    fontSize = 24.sp,
+                                    fontSize = (24 * scale).sp,
                                     fontWeight = FontWeight.Black
                                 ),
                                 color = colors.textPrimary
@@ -489,7 +495,7 @@ fun JourneyDetailScreen(
 
                         Box(
                             modifier = Modifier
-                                .size(40.dp)
+                                .size((40 * scale).dp)
                                 .clip(RoundedCornerShape(8.dp))
                                 .background(colors.stepperBackground)
                                 .clickable { logAmount++ },
@@ -504,15 +510,20 @@ fun JourneyDetailScreen(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(20.dp))
+                    Spacer(modifier = Modifier.height((20 * scale).dp))
 
                     // Commit button
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(50.dp)
+                            .height((50 * scale).dp)
                             .clip(RoundedCornerShape(12.dp))
-                            .background(colors.emerald)
+                            .background(colors.background)
+                            .border(
+                                width = 1.dp,
+                                color = colors.textTertiary.copy(alpha = 0.2f),
+                                shape = RoundedCornerShape(12.dp)
+                            )
                             .clickable {
                                 if (logAmount > 0) {
                                     onProgress(journey.id, logAmount)
@@ -528,13 +539,13 @@ fun JourneyDetailScreen(
                             Icon(
                                 imageVector = Icons.Default.Check,
                                 contentDescription = null,
-                                tint = Color.White,
+                                tint = colors.textPrimary,
                                 modifier = Modifier.size(18.dp)
                             )
                             Text(
                                 text = "Commit Progress",
                                 style = MaterialTheme.typography.labelLarge,
-                                color = Color.White
+                                color = colors.textPrimary
                             )
                         }
                     }
@@ -578,7 +589,7 @@ fun JourneyDetailScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height((16 * scale).dp))
 
             // =========================================================
             // STATS GRID
@@ -592,7 +603,7 @@ fun JourneyDetailScreen(
                         .weight(1f)
                         .clip(RoundedCornerShape(16.dp))
                         .background(colors.cardBackground)
-                        .padding(16.dp)
+                        .padding((16 * scale).dp)
                 ) {
                     Text(
                         text = "COMPLETED",
@@ -601,20 +612,21 @@ fun JourneyDetailScreen(
                         letterSpacing = 1.5.sp,
                         color = colors.textTertiary
                     )
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Row(verticalAlignment = Alignment.Bottom) {
+                    Spacer(modifier = Modifier.height((6 * scale).dp))
+                    Row {
                         Text(
                             text = "${journey.progress}",
-                            fontSize = 22.sp,
+                            fontSize = (22 * scale).sp,
                             fontWeight = FontWeight.Bold,
-                            color = colors.textPrimary
+                            color = colors.textPrimary,
+                            modifier = Modifier.alignByBaseline()
                         )
                         Text(
                             text = " / ${journey.target}",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Medium,
                             color = colors.textTertiary,
-                            modifier = Modifier.padding(bottom = 2.dp)
+                            modifier = Modifier.alignByBaseline()
                         )
                     }
                 }
@@ -624,7 +636,7 @@ fun JourneyDetailScreen(
                         .weight(1f)
                         .clip(RoundedCornerShape(16.dp))
                         .background(colors.cardBackground)
-                        .padding(16.dp)
+                        .padding((16 * scale).dp)
                 ) {
                     Text(
                         text = "REMAINING UNIT",
@@ -633,27 +645,28 @@ fun JourneyDetailScreen(
                         letterSpacing = 1.5.sp,
                         color = colors.textTertiary
                     )
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Row(verticalAlignment = Alignment.Bottom) {
+                    Spacer(modifier = Modifier.height((6 * scale).dp))
+                    Row {
                         Text(
                             text = "$remainingUnits",
-                            fontSize = 22.sp,
+                            fontSize = (22 * scale).sp,
                             fontWeight = FontWeight.Bold,
-                            color = colors.textPrimary
+                            color = colors.textPrimary,
+                            modifier = Modifier.alignByBaseline()
                         )
                         Text(
-                            text = " ${journey.unit}",
+                            text = " ${journey.unit.replaceFirstChar { it.uppercase() }}",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Medium,
                             color = colors.textTertiary,
-                            modifier = Modifier.padding(bottom = 2.dp)
+                            modifier = Modifier.alignByBaseline()
                         )
                     }
                 }
             }
 
-            // Extra space so Abandon Mission is below the fold
-            Spacer(modifier = Modifier.height(48.dp))
+            // Extra space so Abandon Mission is always below the fold
+            Spacer(modifier = Modifier.height((screenHeight / 5).dp))
 
             // Abandon Mission — only visible after scrolling
             Box(
