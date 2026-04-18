@@ -48,11 +48,14 @@ import com.therealprince.untildone.data.BackupReceiver
 import com.therealprince.untildone.data.DailyLog
 import com.therealprince.untildone.data.FocusSession
 import com.therealprince.untildone.data.Journey
+import com.therealprince.untildone.data.ReleaseInfo
 import com.therealprince.untildone.data.SessionManager
+import com.therealprince.untildone.data.UpdateManager
 import com.therealprince.untildone.data.User
 import com.therealprince.untildone.data.hashPassword
 import com.therealprince.untildone.ui.components.BottomNavBar
 import com.therealprince.untildone.ui.components.CreateJourneySheet
+import com.therealprince.untildone.ui.components.UpdateDialog
 import com.therealprince.untildone.ui.screens.AnalyticsScreen
 import com.therealprince.untildone.ui.screens.AuthScreen
 import com.therealprince.untildone.ui.screens.DashboardScreen
@@ -107,6 +110,55 @@ fun UntilDoneApp(
     var isCreateModalOpen by remember { mutableStateOf(false) }
     var authError by remember { mutableStateOf<String?>(null) }
     var backupMessage by remember { mutableStateOf<String?>(null) }
+
+    // Update flow
+    val currentAppVersion = remember { UpdateManager.getCurrentVersionName(context) }
+    var pendingUpdate by remember { mutableStateOf<ReleaseInfo?>(null) }
+    var updateMessage by remember { mutableStateOf<String?>(null) }
+    var isCheckingForUpdate by remember { mutableStateOf(false) }
+
+    suspend fun checkForUpdate(manual: Boolean) {
+        if (isCheckingForUpdate) return
+        isCheckingForUpdate = true
+        try {
+            val release = UpdateManager.fetchLatestRelease()
+            sessionManager.setLastUpdateCheckMillis(System.currentTimeMillis())
+            if (release == null) {
+                if (manual) updateMessage = "Couldn't reach update server"
+                return
+            }
+            val newer = UpdateManager.isNewerVersion(release.version, currentAppVersion)
+            if (!newer) {
+                if (manual) updateMessage = "You're on the latest version (v$currentAppVersion)"
+                return
+            }
+            if (!manual && release.version == sessionManager.getSkippedUpdateVersion()) return
+            pendingUpdate = release
+            if (manual) updateMessage = null
+        } finally {
+            isCheckingForUpdate = false
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        val now = System.currentTimeMillis()
+        val sinceLast = now - sessionManager.getLastUpdateCheckMillis()
+        if (sinceLast > 6L * 60 * 60 * 1000) {
+            checkForUpdate(manual = false)
+        }
+    }
+
+    pendingUpdate?.let { release ->
+        UpdateDialog(
+            release = release,
+            currentVersion = currentAppVersion,
+            onSkip = {
+                sessionManager.setSkippedUpdateVersion(release.version)
+                pendingUpdate = null
+            },
+            onDismiss = { pendingUpdate = null },
+        )
+    }
 
     // Profile image state
     var profileImagePath by remember { mutableStateOf(sessionManager.getProfileImagePath()) }
@@ -481,7 +533,14 @@ fun UntilDoneApp(
                                 }
                             },
                             backupMessage = backupMessage,
-                            backupLocation = backupManager.getBackupLocationDisplay(currentUserName)
+                            backupLocation = backupManager.getBackupLocationDisplay(currentUserName),
+                            appVersion = currentAppVersion,
+                            isCheckingForUpdate = isCheckingForUpdate,
+                            updateMessage = updateMessage,
+                            onCheckForUpdates = {
+                                updateMessage = "Checking…"
+                                scope.launch { checkForUpdate(manual = true) }
+                            },
                         )
                     }
                 }

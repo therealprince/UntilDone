@@ -30,7 +30,9 @@ import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.RestartAlt
 import androidx.compose.material.icons.outlined.Restore
 import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.SystemUpdate
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
@@ -79,6 +81,10 @@ fun SettingsScreen(
     lastBackupInfo: String?,
     backupMessage: String?,
     backupLocation: String?,
+    appVersion: String,
+    isCheckingForUpdate: Boolean,
+    updateMessage: String?,
+    onCheckForUpdates: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val colors = UntilDoneTheme.colors
@@ -479,10 +485,69 @@ fun SettingsScreen(
             }
         }
 
+        Spacer(modifier = Modifier.height(20.dp))
+
+        SectionLabel("ABOUT")
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(colors.cardBackground)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(colors.inputBackground)
+                    .clickable(enabled = !isCheckingForUpdate, onClick = onCheckForUpdates)
+                    .padding(horizontal = 12.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.SystemUpdate,
+                    contentDescription = null,
+                    tint = colors.textSecondary,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Check for updates",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.textPrimary,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        text = "Current: v$appVersion",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.textTertiary,
+                        fontSize = 11.sp
+                    )
+                }
+                if (isCheckingForUpdate) {
+                    CircularProgressIndicator(
+                        color = colors.emerald,
+                        strokeWidth = 2.dp,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+            if (!updateMessage.isNullOrBlank()) {
+                Text(
+                    text = updateMessage,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.textSecondary,
+                    modifier = Modifier.padding(start = 4.dp)
+                )
+            }
+        }
+
         Spacer(modifier = Modifier.height(32.dp))
 
         Text(
-            text = "UntilDone v1.1",
+            text = "UntilDone v$appVersion",
             style = MaterialTheme.typography.bodySmall,
             color = colors.textTertiary,
             modifier = Modifier.align(Alignment.CenterHorizontally)

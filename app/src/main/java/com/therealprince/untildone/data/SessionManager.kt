@@ -89,6 +89,20 @@ class SessionManager(context: Context) {
         prefs.edit().putStringSet("custom_units", current).apply()
     }
 
+    // Update flow
+    fun getSkippedUpdateVersion(): String =
+        prefs.getString("update_skipped_version", "") ?: ""
+
+    fun setSkippedUpdateVersion(version: String) {
+        prefs.edit().putString("update_skipped_version", version).apply()
+    }
+
+    fun getLastUpdateCheckMillis(): Long = prefs.getLong("update_last_check", 0L)
+
+    fun setLastUpdateCheckMillis(time: Long) {
+        prefs.edit().putLong("update_last_check", time).apply()
+    }
+
     companion object {
         val DEFAULT_CATEGORIES = listOf("SKILL", "FITNESS", "READING", "MINDFUL", "WORK")
         val DEFAULT_UNITS = listOf("days", "sessions", "hours", "pages", "lectures")
