@@ -69,6 +69,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
@@ -108,8 +109,13 @@ fun UntilDoneApp(
     var currentScreen by remember { mutableStateOf("home") }
     var activeJourneyId by remember { mutableStateOf<Long?>(null) }
     var isCreateModalOpen by remember { mutableStateOf(false) }
+    var editJourney by remember { mutableStateOf<Journey?>(null) }
     var authError by remember { mutableStateOf<String?>(null) }
     var backupMessage by remember { mutableStateOf<String?>(null) }
+
+    var todayFocusSeconds by remember { mutableIntStateOf(0) }
+    var todaySessionsCount by remember { mutableIntStateOf(0) }
+    var streakDays by remember { mutableIntStateOf(0) }
 
     // Update flow
     val currentAppVersion = remember { UpdateManager.getCurrentVersionName(context) }
@@ -186,6 +192,46 @@ fun UntilDoneApp(
     LaunchedEffect(currentUserId, journeyRefresh) {
         if (currentUserId != -1L) {
             journeys = db.getJourneysByUser(currentUserId)
+        }
+    }
+
+    LaunchedEffect(currentUserId, currentScreen, journeyRefresh) {
+        if (currentUserId != -1L && currentScreen == "timer") {
+            val today = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
+            val log = db.getDailyLogByDate(currentUserId, today)
+            todayFocusSeconds = (log?.focusMinutes ?: 0) * 60
+            val todayStart = run {
+                val cal = Calendar.getInstance().apply {
+                    set(Calendar.HOUR_OF_DAY, 0)
+                    set(Calendar.MINUTE, 0)
+                    set(Calendar.SECOND, 0)
+                    set(Calendar.MILLISECOND, 0)
+                }
+                cal.timeInMillis
+            }
+            todaySessionsCount = db.getAllFocusSessionsByUser(currentUserId)
+                .count { it.completedAt >= todayStart }
+            val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+            val cal = Calendar.getInstance()
+            var streak = 0
+            val logs = db.getAllDailyLogsByUser(currentUserId)
+                .filter { (it.focusMinutes > 0) || (it.progressLogged > 0) }
+                .map { it.date }
+                .toSet()
+            while (true) {
+                val d = sdf.format(cal.time)
+                if (logs.contains(d)) {
+                    streak += 1
+                    cal.add(Calendar.DAY_OF_YEAR, -1)
+                } else {
+                    if (streak == 0 && d == today) {
+                        cal.add(Calendar.DAY_OF_YEAR, -1)
+                        continue
+                    }
+                    break
+                }
+            }
+            streakDays = streak
         }
     }
 
@@ -316,7 +362,18 @@ fun UntilDoneApp(
 
             FocusTimerScreen(
                 onBack = { currentScreen = "home" },
+                journeys = journeys.filter { !it.isComplete },
+                todayFocusSeconds = todayFocusSeconds,
+                todaySessionsCount = todaySessionsCount,
+                streakDays = streakDays,
+                onSessionTick = { jid, secs ->
+                    if (jid != null) {
+                        scope.launch { db.addFocusTime(jid, secs) }
+                    }
+                    todayFocusSeconds += secs
+                },
                 onSessionComplete = { durationSeconds ->
+                    todaySessionsCount += 1
                     scope.launch {
                         db.insertFocusSession(
                             FocusSession(
@@ -398,37 +455,29 @@ fun UntilDoneApp(
                             onBack = { currentScreen = "home" },
                             onProgress = { id, amount ->
                                 scope.launch {
-                                    val journey = db.getJourneyById(id)
-                                    if (journey != null) {
-                                        db.updateJourney(
-                                            journey.copy(
-                                                progress = (journey.progress + amount)
-                                                    .coerceAtMost(journey.target)
+                                    val today = SimpleDateFormat(
+                                        "yyyy-MM-dd", Locale.US
+                                    ).format(Date())
+                                    db.logJourneyProgress(id, amount, today)
+                                    val existingLog = db.getDailyLogByDate(
+                                        currentUserId, today
+                                    )
+                                    if (existingLog != null) {
+                                        db.upsertDailyLog(
+                                            existingLog.copy(
+                                                progressLogged = existingLog.progressLogged + amount,
+                                                journeysWorkedOn = existingLog.journeysWorkedOn + 1
                                             )
                                         )
-                                        val today = SimpleDateFormat(
-                                            "yyyy-MM-dd", Locale.US
-                                        ).format(Date())
-                                        val existingLog = db.getDailyLogByDate(
-                                            currentUserId, today
+                                    } else {
+                                        db.upsertDailyLog(
+                                            DailyLog(
+                                                userId = currentUserId,
+                                                date = today,
+                                                progressLogged = amount,
+                                                journeysWorkedOn = 1
+                                            )
                                         )
-                                        if (existingLog != null) {
-                                            db.upsertDailyLog(
-                                                existingLog.copy(
-                                                    progressLogged = existingLog.progressLogged + amount,
-                                                    journeysWorkedOn = existingLog.journeysWorkedOn + 1
-                                                )
-                                            )
-                                        } else {
-                                            db.upsertDailyLog(
-                                                DailyLog(
-                                                    userId = currentUserId,
-                                                    date = today,
-                                                    progressLogged = amount,
-                                                    journeysWorkedOn = 1
-                                                )
-                                            )
-                                        }
                                     }
                                 }
                             },
@@ -437,6 +486,10 @@ fun UntilDoneApp(
                                     db.deleteJourneyById(id)
                                 }
                                 currentScreen = "home"
+                            },
+                            onEdit = { j ->
+                                editJourney = j
+                                isCreateModalOpen = true
                             }
                         )
 
@@ -588,7 +641,10 @@ fun UntilDoneApp(
                 // Create Journey Sheet
                 CreateJourneySheet(
                     isOpen = isCreateModalOpen,
-                    onClose = { isCreateModalOpen = false },
+                    onClose = {
+                        isCreateModalOpen = false
+                        editJourney = null
+                    },
                     userId = currentUserId,
                     categories = categories,
                     onAddCategory = { cat ->
@@ -605,11 +661,17 @@ fun UntilDoneApp(
                         sessionManager.addUnit(u)
                         units = sessionManager.getUnits()
                     },
+                    editJourney = editJourney,
                     onCreate = { newJourney ->
                         scope.launch {
-                            db.insertJourney(newJourney)
+                            if (editJourney != null) {
+                                db.updateJourney(newJourney)
+                            } else {
+                                db.insertJourney(newJourney)
+                            }
                         }
                         isCreateModalOpen = false
+                        editJourney = null
                     }
                 )
             }

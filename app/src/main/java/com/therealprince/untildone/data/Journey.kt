@@ -8,7 +8,11 @@ data class Journey(
     val progress: Int,
     val target: Int,
     val dailyTarget: Int,
+    val dailyMax: Int? = null,
     val unit: String,
+    val timeSpent: Int = 0,
+    val todayCompleted: Int = 0,
+    val lastLogDate: String = "",
     val createdAt: Long = System.currentTimeMillis()
 ) {
     val percentage: Int
@@ -19,4 +23,7 @@ data class Journey(
 
     val remaining: Int
         get() = (target - progress).coerceAtLeast(0)
+
+    fun todayCompletedFor(today: String): Int =
+        if (lastLogDate == today) todayCompleted else 0
 }

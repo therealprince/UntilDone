@@ -67,18 +67,24 @@ fun CreateJourneySheet(
     onDeleteCategory: (String) -> Unit,
     isDefaultCategory: (String) -> Boolean,
     units: List<String>,
-    onAddUnit: (String) -> Unit
+    onAddUnit: (String) -> Unit,
+    editJourney: Journey? = null,
 ) {
     if (!isOpen) return
 
     val colors = UntilDoneTheme.colors
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    var title by remember { mutableStateOf("") }
-    var target by remember { mutableStateOf("90") }
-    var dailyTarget by remember { mutableStateOf("1") }
-    var unit by remember { mutableStateOf(if (units.isNotEmpty()) units.last() else "sessions") }
-    var tag by remember { mutableStateOf(if (categories.isNotEmpty()) categories.first() else "SKILL") }
+    var title by remember(editJourney?.id) { mutableStateOf(editJourney?.title ?: "") }
+    var target by remember(editJourney?.id) { mutableStateOf(editJourney?.target?.toString() ?: "90") }
+    var dailyTarget by remember(editJourney?.id) { mutableStateOf(editJourney?.dailyTarget?.toString() ?: "1") }
+    var dailyMax by remember(editJourney?.id) { mutableStateOf(editJourney?.dailyMax?.toString() ?: "") }
+    var unit by remember(editJourney?.id) {
+        mutableStateOf(editJourney?.unit ?: (if (units.isNotEmpty()) units.last() else "sessions"))
+    }
+    var tag by remember(editJourney?.id) {
+        mutableStateOf(editJourney?.tag ?: (if (categories.isNotEmpty()) categories.first() else "SKILL"))
+    }
 
     var showAddCategoryDialog by remember { mutableStateOf(false) }
     var newCategoryName by remember { mutableStateOf("") }
@@ -225,7 +231,7 @@ fun CreateJourneySheet(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Start a Mission",
+                    text = if (editJourney != null) "Edit Mission" else "Start a Mission",
                     style = MaterialTheme.typography.headlineMedium,
                     color = colors.textPrimary
                 )
@@ -464,31 +470,68 @@ fun CreateJourneySheet(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Daily minimum
-            FormLabel(text = "DAILY MINIMUM ($unit)")
-            TextField(
-                value = dailyTarget,
-                onValueChange = { dailyTarget = it.filter { c -> c.isDigit() } },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp)),
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = colors.inputBackground,
-                    unfocusedContainerColor = colors.inputBackground,
-                    focusedTextColor = colors.textPrimary,
-                    unfocusedTextColor = colors.textPrimary,
-                    cursorColor = colors.textPrimary,
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent,
-                ),
-                textStyle = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                singleLine = true
-            )
+            // Daily minimum / maximum
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    FormLabel(text = "DAILY MIN")
+                    TextField(
+                        value = dailyTarget,
+                        onValueChange = { dailyTarget = it.filter { c -> c.isDigit() } },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp)),
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = colors.inputBackground,
+                            unfocusedContainerColor = colors.inputBackground,
+                            focusedTextColor = colors.textPrimary,
+                            unfocusedTextColor = colors.textPrimary,
+                            cursorColor = colors.textPrimary,
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent,
+                        ),
+                        textStyle = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true
+                    )
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "DAILY MAX",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            letterSpacing = 1.5.sp,
+                            fontSize = 10.sp
+                        ),
+                        color = Emerald500,
+                        modifier = Modifier.padding(bottom = 6.dp, start = 2.dp)
+                    )
+                    TextField(
+                        value = dailyMax,
+                        onValueChange = { dailyMax = it.filter { c -> c.isDigit() } },
+                        placeholder = { Text("Optional", color = colors.textTertiary) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp)),
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = colors.inputBackground,
+                            unfocusedContainerColor = colors.inputBackground,
+                            focusedTextColor = colors.textPrimary,
+                            unfocusedTextColor = colors.textPrimary,
+                            cursorColor = colors.textPrimary,
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent,
+                        ),
+                        textStyle = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true
+                    )
+                }
+            }
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Submit button
             val isEnabled = title.isNotBlank()
             Box(
                 modifier = Modifier
@@ -501,7 +544,17 @@ fun CreateJourneySheet(
                     )
                     .then(
                         if (isEnabled) Modifier.clickable {
-                            onCreate(
+                            val parsedMax = dailyMax.toIntOrNull()
+                            val journey = if (editJourney != null) {
+                                editJourney.copy(
+                                    title = title,
+                                    tag = tag,
+                                    target = target.toIntOrNull() ?: editJourney.target,
+                                    dailyTarget = dailyTarget.toIntOrNull() ?: editJourney.dailyTarget,
+                                    dailyMax = parsedMax,
+                                    unit = unit
+                                )
+                            } else {
                                 Journey(
                                     userId = userId,
                                     title = title,
@@ -509,18 +562,23 @@ fun CreateJourneySheet(
                                     progress = 0,
                                     target = target.toIntOrNull() ?: 90,
                                     dailyTarget = dailyTarget.toIntOrNull() ?: 1,
+                                    dailyMax = parsedMax,
                                     unit = unit
                                 )
-                            )
-                            title = ""
-                            target = "90"
-                            dailyTarget = "1"
+                            }
+                            onCreate(journey)
+                            if (editJourney == null) {
+                                title = ""
+                                target = "90"
+                                dailyTarget = "1"
+                                dailyMax = ""
+                            }
                         } else Modifier
                     ),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "Commit to Mission",
+                    text = if (editJourney != null) "Save Changes" else "Commit to Mission",
                     style = MaterialTheme.typography.titleMedium,
                     color = if (isEnabled) colors.buttonPrimaryContent
                     else colors.textTertiary

@@ -10,7 +10,7 @@ import java.util.Date
 import java.util.Locale
 
 data class BackupData(
-    val version: Int = 1,
+    val version: Int = 2,
     val createdAt: String = "",
     val user: User? = null,
     val journeys: List<Journey> = emptyList(),

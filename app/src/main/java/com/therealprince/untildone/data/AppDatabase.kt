@@ -35,7 +35,11 @@ class AppDatabase private constructor(context: Context) :
                 progress INTEGER NOT NULL,
                 target INTEGER NOT NULL,
                 dailyTarget INTEGER NOT NULL,
+                dailyMax INTEGER,
                 unit TEXT NOT NULL,
+                timeSpent INTEGER NOT NULL DEFAULT 0,
+                todayCompleted INTEGER NOT NULL DEFAULT 0,
+                lastLogDate TEXT NOT NULL DEFAULT '',
                 createdAt INTEGER NOT NULL
             )"""
         )
@@ -61,7 +65,12 @@ class AppDatabase private constructor(context: Context) :
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-        // For v1, no migrations needed
+        if (oldVersion < 2) {
+            db.execSQL("ALTER TABLE journeys ADD COLUMN dailyMax INTEGER")
+            db.execSQL("ALTER TABLE journeys ADD COLUMN timeSpent INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("ALTER TABLE journeys ADD COLUMN todayCompleted INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("ALTER TABLE journeys ADD COLUMN lastLogDate TEXT NOT NULL DEFAULT ''")
+        }
     }
 
     // Notify that journeys changed
@@ -133,7 +142,11 @@ class AppDatabase private constructor(context: Context) :
             put("progress", journey.progress)
             put("target", journey.target)
             put("dailyTarget", journey.dailyTarget)
+            if (journey.dailyMax != null) put("dailyMax", journey.dailyMax) else putNull("dailyMax")
             put("unit", journey.unit)
+            put("timeSpent", journey.timeSpent)
+            put("todayCompleted", journey.todayCompleted)
+            put("lastLogDate", journey.lastLogDate)
             put("createdAt", journey.createdAt)
         })
         notifyJourneyChange()
@@ -148,8 +161,36 @@ class AppDatabase private constructor(context: Context) :
             put("tag", journey.tag)
             put("target", journey.target)
             put("dailyTarget", journey.dailyTarget)
+            if (journey.dailyMax != null) put("dailyMax", journey.dailyMax) else putNull("dailyMax")
             put("unit", journey.unit)
+            put("timeSpent", journey.timeSpent)
+            put("todayCompleted", journey.todayCompleted)
+            put("lastLogDate", journey.lastLogDate)
         }, "id = ?", arrayOf(journey.id.toString()))
+        notifyJourneyChange()
+    }
+
+    suspend fun logJourneyProgress(id: Long, amount: Int, today: String) = withContext(Dispatchers.IO) {
+        val journey = getJourneyById(id) ?: return@withContext
+        val newProgress = (journey.progress + amount).coerceAtMost(journey.target)
+        val newTodayCompleted =
+            if (journey.lastLogDate == today) journey.todayCompleted + amount else amount
+        updateJourney(
+            journey.copy(
+                progress = newProgress,
+                todayCompleted = newTodayCompleted,
+                lastLogDate = today
+            )
+        )
+    }
+
+    suspend fun addFocusTime(id: Long, seconds: Int) = withContext(Dispatchers.IO) {
+        if (seconds <= 0) return@withContext
+        val db = writableDatabase
+        db.execSQL(
+            "UPDATE journeys SET timeSpent = timeSpent + ? WHERE id = ?",
+            arrayOf<Any>(seconds, id)
+        )
         notifyJourneyChange()
     }
 
@@ -292,17 +333,24 @@ class AppDatabase private constructor(context: Context) :
         createdAt = getLong(getColumnIndexOrThrow("createdAt"))
     )
 
-    private fun Cursor.toJourney(): Journey = Journey(
-        id = getLong(getColumnIndexOrThrow("id")),
-        userId = getLong(getColumnIndexOrThrow("userId")),
-        title = getString(getColumnIndexOrThrow("title")),
-        tag = getString(getColumnIndexOrThrow("tag")),
-        progress = getInt(getColumnIndexOrThrow("progress")),
-        target = getInt(getColumnIndexOrThrow("target")),
-        dailyTarget = getInt(getColumnIndexOrThrow("dailyTarget")),
-        unit = getString(getColumnIndexOrThrow("unit")),
-        createdAt = getLong(getColumnIndexOrThrow("createdAt"))
-    )
+    private fun Cursor.toJourney(): Journey {
+        val dailyMaxIdx = getColumnIndexOrThrow("dailyMax")
+        return Journey(
+            id = getLong(getColumnIndexOrThrow("id")),
+            userId = getLong(getColumnIndexOrThrow("userId")),
+            title = getString(getColumnIndexOrThrow("title")),
+            tag = getString(getColumnIndexOrThrow("tag")),
+            progress = getInt(getColumnIndexOrThrow("progress")),
+            target = getInt(getColumnIndexOrThrow("target")),
+            dailyTarget = getInt(getColumnIndexOrThrow("dailyTarget")),
+            dailyMax = if (isNull(dailyMaxIdx)) null else getInt(dailyMaxIdx),
+            unit = getString(getColumnIndexOrThrow("unit")),
+            timeSpent = getInt(getColumnIndexOrThrow("timeSpent")),
+            todayCompleted = getInt(getColumnIndexOrThrow("todayCompleted")),
+            lastLogDate = getString(getColumnIndexOrThrow("lastLogDate")) ?: "",
+            createdAt = getLong(getColumnIndexOrThrow("createdAt"))
+        )
+    }
 
     private fun Cursor.toJourneyList(): List<Journey> {
         val list = mutableListOf<Journey>()
@@ -340,7 +388,7 @@ class AppDatabase private constructor(context: Context) :
 
     companion object {
         private const val DB_NAME = "untildone_database"
-        private const val DB_VERSION = 1
+        private const val DB_VERSION = 2
 
         @Volatile
         private var INSTANCE: AppDatabase? = null
