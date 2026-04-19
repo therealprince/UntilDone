@@ -105,6 +105,6 @@ class SessionManager(context: Context) {
 
     companion object {
         val DEFAULT_CATEGORIES = listOf("SKILL", "FITNESS", "READING", "MINDFUL", "WORK")
-        val DEFAULT_UNITS = listOf("days", "sessions", "hours", "pages", "lectures")
+        val DEFAULT_UNITS = listOf("Days", "Sessions", "Hours", "Pages", "Lectures")
     }
 }

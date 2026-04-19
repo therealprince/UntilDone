@@ -140,6 +140,7 @@ fun DashboardScreen(
                         end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
                     )
                 )
+                .clickable { onNavigate("timer", null) }
                 .padding(20.dp)
         ) {
             Row(
@@ -183,8 +184,7 @@ fun DashboardScreen(
                     modifier = Modifier
                         .size(48.dp)
                         .clip(RoundedCornerShape(16.dp))
-                        .background(colors.cardBackground)
-                        .clickable { onNavigate("timer", null) },
+                        .background(colors.cardBackground),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(

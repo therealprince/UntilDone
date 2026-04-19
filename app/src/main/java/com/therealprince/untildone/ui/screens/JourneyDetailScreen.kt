@@ -1,11 +1,15 @@
 package com.therealprince.untildone.ui.screens
 
+import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,6 +28,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Adjust
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
@@ -53,6 +58,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -75,6 +82,14 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import kotlin.math.ceil
+
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
+import kotlin.text.compareTo
+
+
 
 @Composable
 fun JourneyDetailScreen(
@@ -127,6 +142,9 @@ fun JourneyDetailScreen(
     val potentialTodayTotal = todayCompleted + logAmount
     val isMinReached = potentialTodayTotal >= journey.dailyTarget
     val isMaxReached = journey.dailyMax != null && potentialTodayTotal >= journey.dailyMax
+
+
+
 
     LaunchedEffect(remainingUnits) {
         if (logAmount > remainingUnits && remainingUnits > 0) logAmount = remainingUnits
@@ -615,228 +633,296 @@ private fun LogProgressCard(
 ) {
     val colors = UntilDoneTheme.colors
     val todayMet = todayCompleted >= journey.dailyTarget
-    val todayBadgeColor = when {
-        journey.dailyMax != null && todayCompleted >= journey.dailyMax -> Emerald400
-        todayMet -> Color.White
-        else -> Color(0xFFFBBF24)
-    }
+//    val todayBadgeColor = when {
+//        journey.dailyMax != null && todayCompleted >= journey.dailyMax -> Emerald400
+//        todayMet -> Color.White
+//        else -> Color(0xFFFBBF24)
+//    }
     val displayColor = when {
         isMaxReached -> Emerald400
         isMinReached -> Color.White
         else -> Color(0xFFFBBF24)
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(24.dp))
-            .background(colors.cardBackground)
-    ) {
-        Column(modifier = Modifier.padding((20 * scale).dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
-            ) {
-                Column {
-                    Text(
-                        text = "Log Progress",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = colors.textPrimary
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    if (journey.dailyMax != null) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+
+    Box {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(24.dp))
+                .background(colors.cardBackground)
+        ) {
+            Column(modifier = Modifier.padding((20 * scale).dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Column {
+                        Text(
+                            text = "Log Progress",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = colors.textPrimary
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        if (journey.dailyMax != null) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = "Min: ${journey.dailyTarget}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = if (isMinReached) colors.textPrimary else colors.textTertiary,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Text(
+                                    "  •  ",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = colors.textTertiary
+                                )
+                                Icon(
+                                    imageVector = Icons.Default.Bolt,
+                                    contentDescription = null,
+                                    tint = if (isMaxReached) Emerald400 else colors.textTertiary,
+                                    modifier = Modifier.size(12.dp)
+                                )
+                                Text(
+                                    text = "Max: ${journey.dailyMax}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = if (isMaxReached) Emerald400 else colors.textTertiary,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        } else {
                             Text(
-                                text = "Min: ${journey.dailyTarget}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = if (isMinReached) colors.textPrimary else colors.textTertiary,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Text(
-                                "  •  ",
+                                text = "How many ${journey.unit} did you complete?",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = colors.textTertiary
                             )
-                            Icon(
-                                imageVector = Icons.Default.Bolt,
-                                contentDescription = null,
-                                tint = if (isMaxReached) Emerald400 else colors.textTertiary,
-                                modifier = Modifier.size(12.dp)
+                        }
+                    }
+
+                }
+
+                Spacer(modifier = Modifier.height((18 * scale).dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size((44 * scale).dp)
+                            .clip(CircleShape)
+                            .background(colors.stepperBackground)
+                            .clickable(enabled = logAmount > 1) {
+                                onLogAmountChange(logAmount - 1)
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Remove,
+                            contentDescription = "Decrease",
+                            tint = colors.textSecondary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+
+
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        // 1. We define all three color states from your React code
+                        val gradientColors = when {
+                            isMaxReached -> listOf(
+                                Color(0xFF34D399), // from-emerald-400
+                                Color(0xFFA7F3D0), // via-emerald-200
+                                Color(0xFF059669)  // to-emerald-600
                             )
-                            Text(
-                                text = "Max: ${journey.dailyMax}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = if (isMaxReached) Emerald400 else colors.textTertiary,
-                                fontWeight = FontWeight.SemiBold
+                            isMinReached -> listOf(
+                                Color.White,       // from-white
+                                Color(0xFFF5F5F5), // via-neutral-100
+                                Color(0xFFD4D4D4)  // to-neutral-300
+                            )
+                            else -> listOf(
+                                Color.White,       // from-white
+                                Color(0xFFE5E5E5), // via-neutral-200
+                                Color(0xFF737373)  // to-neutral-500
                             )
                         }
-                    } else {
-                        Text(
-                            text = "How many ${journey.unit} did you complete?",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = colors.textTertiary
+
+                        // 2. Create one dynamic brush that updates automatically
+                        val dynamicBrush = Brush.verticalGradient(colors = gradientColors)
+                        val dropShadow = androidx.compose.ui.graphics.Shadow(
+                            color = Color.Black.copy(alpha = 0.25f),
+                            offset = Offset(0f, 4f),
+                            blurRadius = 4f
                         )
-                    }
-                }
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(colors.tagBackground)
-                        .padding(horizontal = 10.dp, vertical = 6.dp)
-                ) {
-                    Text(
-                        text = "TODAY: $todayCompleted / ${journey.dailyTarget}",
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        letterSpacing = 1.sp,
-                        color = todayBadgeColor
-                    )
-                }
-            }
 
-            Spacer(modifier = Modifier.height((18 * scale).dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size((44 * scale).dp)
-                        .clip(CircleShape)
-                        .background(colors.stepperBackground)
-                        .clickable(enabled = logAmount > 1) {
-                            onLogAmountChange(logAmount - 1)
-                        },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Remove,
-                        contentDescription = "Decrease",
-                        tint = colors.textSecondary,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    val emeraldGradient = Brush.linearGradient(
-                        colors = listOf(Emerald400, Emerald500, Emerald600)
-                    )
-                    if (isMaxReached) {
+                        // 3. Just ONE set of Text components!
+                        // It will automatically be Silver normally, and turn Emerald when max is reached.
                         Text(
                             text = "$logAmount",
                             style = TextStyle(
-                                brush = emeraldGradient,
+                                brush = dynamicBrush, // Uses the smart brush here
                                 fontSize = (52 * scale).sp,
                                 fontWeight = FontWeight.Black,
-                                letterSpacing = (-2).sp
+                                letterSpacing = (-2).sp,
+                                shadow = dropShadow
                             )
                         )
+
                         Text(
                             text = if (logAmount == 1) journey.unit.trimEnd('s').uppercase()
                             else journey.unit.uppercase(),
                             style = TextStyle(
-                                brush = emeraldGradient,
+                                brush = dynamicBrush, // Uses the smart brush here
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
-                                letterSpacing = 2.sp
-                            )
+                                letterSpacing = 2.sp,
+                                shadow = dropShadow
+                            ),
+                            modifier = Modifier.padding(top = 4.dp)
                         )
-                    } else {
-                        Text(
-                            text = "$logAmount",
-                            fontSize = (52 * scale).sp,
-                            fontWeight = FontWeight.Black,
-                            letterSpacing = (-2).sp,
-                            color = displayColor
-                        )
-                        Text(
-                            text = if (logAmount == 1) journey.unit.trimEnd('s').uppercase()
-                            else journey.unit.uppercase(),
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 2.sp,
-                            color = displayColor.copy(alpha = 0.8f)
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .size((44 * scale).dp)
+                            .clip(CircleShape)
+                            .background(colors.stepperBackground)
+                            .clickable(enabled = logAmount < remainingUnits) {
+                                onLogAmountChange(logAmount + 1)
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = "Increase",
+                            tint = colors.textSecondary,
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 }
+
+                if (remainingUnits > 1) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    ThickSlider(
+                        value = logAmount.toFloat(),
+                        onValueChange = { onLogAmountChange(it.toInt()) },
+                        valueRange = 1f..remainingUnits.toFloat(),
+                        steps = (remainingUnits - 2).coerceAtLeast(0),
+                        isMaxReached = isMaxReached
+                    )
+                }
+
+                Spacer(modifier = Modifier.height((16 * scale).dp))
 
                 Box(
                     modifier = Modifier
-                        .size((44 * scale).dp)
-                        .clip(CircleShape)
-                        .background(colors.stepperBackground)
-                        .clickable(enabled = logAmount < remainingUnits) {
-                            onLogAmountChange(logAmount + 1)
-                        },
+                        .fillMaxWidth()
+                        .height((50 * scale).dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(colors.background)
+                        .border(
+                            width = 1.dp,
+                            color = colors.textTertiary.copy(alpha = 0.2f),
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                        .clickable(onClick = onCommit),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "Increase",
-                        tint = colors.textSecondary,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-            }
-
-            if (remainingUnits > 1) {
-                Spacer(modifier = Modifier.height(16.dp))
-                ThickSlider(
-                    value = logAmount.toFloat(),
-                    onValueChange = { onLogAmountChange(it.toInt()) },
-                    valueRange = 1f..remainingUnits.toFloat(),
-                    steps = (remainingUnits - 2).coerceAtLeast(0),
-                    isMaxReached = isMaxReached
-                )
-            }
-
-            Spacer(modifier = Modifier.height((16 * scale).dp))
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height((50 * scale).dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(colors.background)
-                    .border(
-                        width = 1.dp,
-                        color = colors.textTertiary.copy(alpha = 0.2f),
-                        shape = RoundedCornerShape(12.dp)
-                    )
-                    .clickable(onClick = onCommit),
-                contentAlignment = Alignment.Center
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    if (isMaxReached) {
-                        Icon(
-                            imageVector = Icons.Default.LocalFireDepartment,
-                            contentDescription = null,
-                            tint = Emerald400,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    } else {
-                        Icon(
-                            imageVector = Icons.Default.Check,
-                            contentDescription = null,
-                            tint = colors.textSecondary,
-                            modifier = Modifier.size(18.dp)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        if (isMaxReached) {
+                            Icon(
+                                imageVector = Icons.Default.LocalFireDepartment,
+                                contentDescription = null,
+                                tint = Emerald400,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null,
+                                tint = colors.textSecondary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                        Text(
+                            text = "Commit Progress",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = colors.textPrimary
                         )
                     }
-                    Text(
-                        text = "Commit Progress",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = colors.textPrimary
-                    )
                 }
             }
         }
+
+        // Make sure this is placed inside a parent Box so align(Alignment.TopEnd) works
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopEnd) // absolute top-0 right-0
+                .clip(RoundedCornerShape(bottomStart = 16.dp, topEnd = 24.dp)) // rounded-bl-[16px]
+                .background(Color(0xFF18181B).copy(alpha = 0.8f)) // bg-[#18181b]/80
+                .drawBehind {
+                    // Custom border-b and border-l (border-neutral-800/60)
+                    val strokeWidth = 1.dp.toPx()
+                    val borderColor = Color(0xFF262626).copy(alpha = 0.6f)
+
+                    // Left border
+                    drawLine(
+                        color = borderColor,
+                        start = Offset(0f, 0f),
+                        end = Offset(0f, size.height),
+                        strokeWidth = strokeWidth
+                    )
+                    // Bottom border
+                    drawLine(
+                        color = borderColor,
+                        start = Offset(0f, size.height),
+                        end = Offset(size.width, size.height),
+                        strokeWidth = strokeWidth
+                    )
+                }
+                .padding(horizontal = 12.dp, vertical = 6.dp) // px-3 py-1.5
+        ) {
+            val isTargetMet = todayCompleted >= journey.dailyTarget
+            val targetColor = if (isTargetMet) Color(0xFF34D399) else Color(0xFFF59E0B) // emerald-400 : amber-500
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp) // gap-1.5
+            ) {
+                // Target Icon
+                Icon(
+                    imageVector = Icons.Default.Adjust, // Closest default icon to Lucide's "Target"
+                    contentDescription = null,
+                    tint = targetColor,
+                    modifier = Modifier.size(12.dp)
+                )
+
+                // Text with inline color formatting
+                Text(
+                    text = buildAnnotatedString {
+                        append("TODAY: ")
+                        withStyle(
+                            style = SpanStyle(
+                                color = if (isTargetMet) Color(0xFF34D399) else Color.White
+                            )
+                        ) {
+                            append("$todayCompleted")
+                        }
+                        append(" / ${journey.dailyTarget}")
+                    },
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.5.sp, // tracking-widest
+                    color = Color(0xFFD4D4D4) // text-neutral-300
+                )
+            }
+        }
     }
+
 }
 
 @Composable
@@ -1046,47 +1132,115 @@ private fun ThickSlider(
     steps: Int,
     isMaxReached: Boolean
 ) {
+    // 1. Remember the interaction state to detect when the user is dragging
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+// 2. Animate the thumb scale (Mimics React's active:scale-110)
+    val thumbScale by animateFloatAsState(
+        targetValue = if (isPressed) 1.1f else 1f,
+        animationSpec = tween(durationMillis = 75, easing = LinearOutSlowInEasing),
+        label = "thumbScale"
+    )
+
+// Determine if max is reached (Adjust this logic to match your specific dailyMax needs)
+//    val isMaxReached = value >= valueRange.endInclusive
+
+//// 3. Exact Tailwind Gradients
+//    val emeraldColors = listOf(Color(0xFF059669), Color(0xFF34D399)) // from-emerald-600 to-emerald-400
+//    val neutralColors = listOf(Color(0xFF525252), Color(0xFFA3A3A3)) // from-neutral-600 to-neutral-400
+//    val activeBrush = Brush.horizontalGradient(if (isMaxReached) emeraldColors else neutralColors)
+    val activeBrush = Brush.horizontalGradient(
+        if (isMaxReached) {
+            // Glowing Emerald when Max is reached
+            listOf(Color(0xFF059669), Color(0xFF34D399))
+        } else {
+            // Neutral Silver/Gray when sliding normally
+            listOf(Color(0xFF525252), Color(0xFFA3A3A3))
+        }
+    )
+
     val colors = UntilDoneTheme.colors
-    val activeBrush = if (isMaxReached) {
-        Brush.horizontalGradient(listOf(Emerald400, Emerald500, Emerald600))
-    } else {
-        Brush.horizontalGradient(listOf(Emerald500, Emerald400))
-    }
+
     Slider(
         value = value,
         onValueChange = onValueChange,
         valueRange = valueRange,
         steps = steps,
-        modifier = Modifier.fillMaxWidth().height(28.dp),
+        interactionSource = interactionSource, // Hook up the interaction source
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(28.dp),
         thumb = {
             Box(
                 modifier = Modifier
-                    .size(22.dp)
-                    .clip(CircleShape)
-                    .background(Color.White)
-                    .border(2.dp, Color.Black.copy(alpha = 0.15f), CircleShape)
-            )
+                    // Apply the scale animation and colored glowing shadows
+                    .graphicsLayer {
+                        scaleX = thumbScale
+                        scaleY = thumbScale
+                        if (isMaxReached) {
+                            shadowElevation = 20.dp.toPx()
+                            spotShadowColor = Color(0xFF10B981) // Emerald glow
+                            ambientShadowColor = Color(0xFF10B981)
+                        } else {
+                            shadowElevation = 8.dp.toPx()
+                            spotShadowColor = Color.Black
+                        }
+                    }
+                    .size(20.dp)
+                    .background(Color.White, CircleShape),
+//                    .border(4.dp, Color(0xFF121212), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                // Inner dot color transitions when max is reached
+                Box(
+                    modifier = Modifier
+                        .size(6.dp)
+                        .background(
+                            color = if (isMaxReached) Color(0xFF10B981) else Color(0xFF737373),
+                            shape = CircleShape
+                        )
+                )
+            }
         },
         track = { state: SliderState ->
             val range = state.valueRange.endInclusive - state.valueRange.start
-            val fraction = if (range > 0f)
+            val targetFraction = if (range > 0f)
                 ((state.value - state.valueRange.start) / range).coerceIn(0f, 1f)
             else 0f
+
+            // 4. Animate the track fill (Mimics React's duration-75 ease-out transition)
+            val animatedFraction by animateFloatAsState(
+                targetValue = targetFraction,
+                animationSpec = tween(durationMillis = 75, easing = LinearOutSlowInEasing),
+                label = "trackFraction"
+            )
+
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(14.dp)
-                    .clip(RoundedCornerShape(7.dp))
-                    .background(colors.background)
+                    .height(8.dp)
+                    .background(Color(0xFF000000), CircleShape)
+                    .border(1.dp, Color(0xFF262626).copy(alpha = 0.5f), CircleShape)
             ) {
                 Box(
                     modifier = Modifier
                         .fillMaxHeight()
-                        .fillMaxWidth(fraction)
-                        .clip(RoundedCornerShape(7.dp))
-                        .background(activeBrush)
+                        // Use the animated fraction here instead of the instant one
+                        .fillMaxWidth(animatedFraction)
+                        .graphicsLayer {
+                            // Emerald glow on the track when maxed out
+                            if (isMaxReached) {
+                                shadowElevation = 12.dp.toPx()
+                                spotShadowColor = Color(0xFF10B981)
+                                ambientShadowColor = Color(0xFF10B981)
+                                clip = false // allow glow to bleed outside the box
+                            }
+                        }
+                        .background(activeBrush, CircleShape)
                 )
             }
         }
     )
+
 }

@@ -1,16 +1,21 @@
 package com.therealprince.untildone.ui.screens
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -48,6 +53,7 @@ import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.SliderState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -64,6 +70,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -394,15 +401,22 @@ fun FocusTimerScreen(
 
             if (!isActive) {
                 if (!isCustomizing) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier
+                            .fillMaxWidth(0.75f)
+                            .align(Alignment.CenterHorizontally)
+                    ) {
                         presets.forEach { mins ->
                             PresetChip(
+                                modifier = Modifier.weight(1f),
                                 label = "${mins}M",
                                 selected = durationPreset == mins,
                                 onClick = { applyPreset(mins) }
                             )
                         }
                         PresetChip(
+                            modifier = Modifier.weight(1f),
                             label = if (isCustomPreset) "${durationPreset}M" else "·",
                             icon = if (!isCustomPreset) Icons.Default.Tune else null,
                             selected = isCustomPreset,
@@ -424,6 +438,19 @@ fun FocusTimerScreen(
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         Text("1", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF737373))
+
+                        // 1. Remember the interaction state
+                        val interactionSource = remember { MutableInteractionSource() }
+                        val isPressed by interactionSource.collectIsPressedAsState()
+
+                        // 2. Animate the thumb scale
+                        val thumbScale by animateFloatAsState(
+                            targetValue = if (isPressed) 1.1f else 1f,
+                            animationSpec = tween(durationMillis = 75, easing = LinearOutSlowInEasing),
+                            label = "thumbScale"
+                        )
+
+                        // 3. The upgraded fluid Slider
                         Slider(
                             value = customMinutes.toFloat(),
                             onValueChange = {
@@ -431,19 +458,68 @@ fun FocusTimerScreen(
                                 applyPreset(customMinutes)
                             },
                             valueRange = 1f..120f,
-                            modifier = Modifier.weight(1f),
-                            colors = SliderDefaults.colors(
-                                thumbColor = Color.White,
-                                activeTrackColor = themeColor,
-                                inactiveTrackColor = Color.Black
-                            )
+                            interactionSource = interactionSource,
+                            modifier = Modifier
+                                .weight(1f) // Keeps it properly spaced relative to your Text and Box
+                                .height(28.dp),
+                            thumb = {
+                                Box(
+                                    modifier = Modifier
+                                        .graphicsLayer {
+                                            scaleX = thumbScale
+                                            scaleY = thumbScale
+                                            shadowElevation = 8.dp.toPx()
+                                            spotShadowColor = Color.Black
+                                        }
+                                        .size(20.dp)
+                                        .background(Color.White, CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    // Clean, neutral inner dot
+                                    Box(
+                                        modifier = Modifier
+                                            .size(6.dp)
+                                            .background(Color(0xFF737373), CircleShape)
+                                    )
+                                }
+                            },
+                            track = { state: SliderState ->
+                                val range = state.valueRange.endInclusive - state.valueRange.start
+                                val targetFraction = if (range > 0f)
+                                    ((state.value - state.valueRange.start) / range).coerceIn(0f, 1f)
+                                else 0f
+
+                                val animatedFraction by animateFloatAsState(
+                                    targetValue = targetFraction,
+                                    animationSpec = tween(durationMillis = 75, easing = LinearOutSlowInEasing),
+                                    label = "trackFraction"
+                                )
+
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(8.dp)
+                                        .background(Color(0xFF000000), CircleShape)
+                                        .border(1.dp, Color(0xFF262626).copy(alpha = 0.5f), CircleShape)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxHeight()
+                                            .fillMaxWidth(animatedFraction)
+                                            // Uses your specific themeColor for the fill
+                                            .background(themeColor, CircleShape)
+                                    )
+                                }
+                            }
                         )
+
                         Text(
                             text = "${customMinutes}M",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.White
                         )
+
                         Box(
                             modifier = Modifier
                                 .size(28.dp)
@@ -601,10 +677,11 @@ private fun PresetChip(
     label: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
     selected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Box(
-        modifier = Modifier
+        modifier = modifier
             .clip(RoundedCornerShape(8.dp))
             .background(if (selected) Color.White else Color.Transparent)
             .border(
@@ -613,7 +690,8 @@ private fun PresetChip(
                 shape = RoundedCornerShape(8.dp)
             )
             .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 6.dp),
+            .height(28.dp)
+            .padding(horizontal = 2.dp),
         contentAlignment = Alignment.Center
     ) {
         if (icon != null) {
