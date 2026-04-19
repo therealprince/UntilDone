@@ -490,7 +490,8 @@ fun UntilDoneApp(
                             onEdit = { j ->
                                 editJourney = j
                                 isCreateModalOpen = true
-                            }
+                            },
+                            onOpenTimer = { currentScreen = "timer" }
                         )
 
                         "settings" -> SettingsScreen(
@@ -663,8 +664,9 @@ fun UntilDoneApp(
                     },
                     editJourney = editJourney,
                     onCreate = { newJourney ->
+                        val isEdit = newJourney.id != 0L
                         scope.launch {
-                            if (editJourney != null) {
+                            if (isEdit) {
                                 db.updateJourney(newJourney)
                             } else {
                                 db.insertJourney(newJourney)

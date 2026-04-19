@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -36,8 +37,9 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.SliderState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -58,6 +60,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -80,6 +83,7 @@ fun JourneyDetailScreen(
     onProgress: (Long, Int) -> Unit,
     onGiveUp: (Long) -> Unit,
     onEdit: (Journey) -> Unit,
+    onOpenTimer: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     if (journey == null) return
@@ -336,7 +340,7 @@ fun JourneyDetailScreen(
 
             Spacer(modifier = Modifier.height((12 * scale).dp))
 
-            FocusTimeCard(timeSpentSeconds = journey.timeSpent, scale = scale)
+            FocusTimeCard(timeSpentSeconds = journey.timeSpent, scale = scale, onClick = onOpenTimer)
         }
     }
 
@@ -717,21 +721,46 @@ private fun LogProgressCard(
                 }
 
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = "$logAmount",
-                        fontSize = (52 * scale).sp,
-                        fontWeight = FontWeight.Black,
-                        letterSpacing = (-2).sp,
-                        color = displayColor
+                    val emeraldGradient = Brush.linearGradient(
+                        colors = listOf(Emerald400, Emerald500, Emerald600)
                     )
-                    Text(
-                        text = if (logAmount == 1) journey.unit.trimEnd('s').uppercase()
-                        else journey.unit.uppercase(),
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 2.sp,
-                        color = displayColor.copy(alpha = 0.8f)
-                    )
+                    if (isMaxReached) {
+                        Text(
+                            text = "$logAmount",
+                            style = TextStyle(
+                                brush = emeraldGradient,
+                                fontSize = (52 * scale).sp,
+                                fontWeight = FontWeight.Black,
+                                letterSpacing = (-2).sp
+                            )
+                        )
+                        Text(
+                            text = if (logAmount == 1) journey.unit.trimEnd('s').uppercase()
+                            else journey.unit.uppercase(),
+                            style = TextStyle(
+                                brush = emeraldGradient,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 2.sp
+                            )
+                        )
+                    } else {
+                        Text(
+                            text = "$logAmount",
+                            fontSize = (52 * scale).sp,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = (-2).sp,
+                            color = displayColor
+                        )
+                        Text(
+                            text = if (logAmount == 1) journey.unit.trimEnd('s').uppercase()
+                            else journey.unit.uppercase(),
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 2.sp,
+                            color = displayColor.copy(alpha = 0.8f)
+                        )
+                    }
                 }
 
                 Box(
@@ -754,17 +783,13 @@ private fun LogProgressCard(
             }
 
             if (remainingUnits > 1) {
-                Spacer(modifier = Modifier.height(12.dp))
-                Slider(
+                Spacer(modifier = Modifier.height(16.dp))
+                ThickSlider(
                     value = logAmount.toFloat(),
                     onValueChange = { onLogAmountChange(it.toInt()) },
                     valueRange = 1f..remainingUnits.toFloat(),
                     steps = (remainingUnits - 2).coerceAtLeast(0),
-                    colors = SliderDefaults.colors(
-                        thumbColor = if (isMaxReached) Emerald400 else Color.White,
-                        activeTrackColor = if (isMaxReached) Emerald500 else colors.textSecondary,
-                        inactiveTrackColor = colors.background
-                    )
+                    isMaxReached = isMaxReached
                 )
             }
 
@@ -857,7 +882,7 @@ private fun StatTile(
 }
 
 @Composable
-private fun FocusTimeCard(timeSpentSeconds: Int, scale: Float) {
+private fun FocusTimeCard(timeSpentSeconds: Int, scale: Float, onClick: () -> Unit) {
     val colors = UntilDoneTheme.colors
     val h = timeSpentSeconds / 3600
     val m = (timeSpentSeconds % 3600) / 60
@@ -868,6 +893,7 @@ private fun FocusTimeCard(timeSpentSeconds: Int, scale: Float) {
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
             .background(colors.cardBackground)
+            .clickable(onClick = onClick)
             .padding((16 * scale).dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
@@ -1009,4 +1035,58 @@ private fun MinimalCalendarIcon(modifier: Modifier = Modifier, color: Color) {
             cap = StrokeCap.Round
         )
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ThickSlider(
+    value: Float,
+    onValueChange: (Float) -> Unit,
+    valueRange: ClosedFloatingPointRange<Float>,
+    steps: Int,
+    isMaxReached: Boolean
+) {
+    val colors = UntilDoneTheme.colors
+    val activeBrush = if (isMaxReached) {
+        Brush.horizontalGradient(listOf(Emerald400, Emerald500, Emerald600))
+    } else {
+        Brush.horizontalGradient(listOf(Emerald500, Emerald400))
+    }
+    Slider(
+        value = value,
+        onValueChange = onValueChange,
+        valueRange = valueRange,
+        steps = steps,
+        modifier = Modifier.fillMaxWidth().height(28.dp),
+        thumb = {
+            Box(
+                modifier = Modifier
+                    .size(22.dp)
+                    .clip(CircleShape)
+                    .background(Color.White)
+                    .border(2.dp, Color.Black.copy(alpha = 0.15f), CircleShape)
+            )
+        },
+        track = { state: SliderState ->
+            val range = state.valueRange.endInclusive - state.valueRange.start
+            val fraction = if (range > 0f)
+                ((state.value - state.valueRange.start) / range).coerceIn(0f, 1f)
+            else 0f
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(14.dp)
+                    .clip(RoundedCornerShape(7.dp))
+                    .background(colors.background)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .fillMaxWidth(fraction)
+                        .clip(RoundedCornerShape(7.dp))
+                        .background(activeBrush)
+                )
+            }
+        }
+    )
 }
